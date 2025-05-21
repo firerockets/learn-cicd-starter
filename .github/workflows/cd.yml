@@ -4,45 +4,60 @@ on:
 
 jobs:
   deploy:
-      name: Deploy
-      runs-on: ubuntu-latest
-      
-      steps:
-        - id: 'auth'
-          uses: google-github-actions/auth@v2
-          with:
-            credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-            export_credentials: true
+    name: Deploy
+    runs-on: ubuntu-latest
 
-        - name: Debug credentials file
-          run: |
-            echo "GOOGLE_GHA_CREDS_PATH=$GOOGLE_GHA_CREDS_PATH"
-            if [ -f "$GOOGLE_GHA_CREDS_PATH" ]; then
-              echo "Credentials file exists at $GOOGLE_GHA_CREDS_PATH"
-              cat "$GOOGLE_GHA_CREDS_PATH"
-            else
-              echo "Credentials file does NOT exist at $GOOGLE_GHA_CREDS_PATH"
-              ls -la /home/runner/work/learn-cicd-starter/learn-cicd-starter/
-            fi
+    steps:
+      # Step 1: Check out code
+      - name: Check out code
+        uses: actions/checkout@v4
 
-        - name: Check out code
-          uses: actions/checkout@v4
+      # Step 2: Authenticate with GCP
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+          export_credentials: true
+        # Move credentials file to a stable location
+        env:
+          GOOGLE_GHA_CREDS_PATH: /tmp/gcp-credentials.json
 
-        - name: Set up Go
-          uses: actions/setup-go@v5
-          with:
-            go-version: "1.23.0"
+      # Step 3: Debug credentials file
+      - name: Debug credentials file
+        run: |
+          echo "GOOGLE_GHA_CREDS_PATH=$GOOGLE_GHA_CREDS_PATH"
+          if [ -f "$GOOGLE_GHA_CREDS_PATH" ]; then
+            echo "Credentials file exists at $GOOGLE_GHA_CREDS_PATH"
+          else
+            echo "Credentials file does NOT exist at $GOOGLE_GHA_CREDS_PATH"
+            ls -la /tmp
+          fi
 
-        - name: Build
-          run: scripts/buildprod.sh
+      # Step 4: Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.0"
 
-        - name: Set up Cloud SDK
-          uses: google-github-actions/setup-gcloud@v2
-          with:
-            project_id: notely-460519
+      # Step 5: Build
+      - name: Build
+        run: scripts/buildprod.sh
 
-        - name: Use gcloud CLI
-          run: gcloud info
+      # Step 6: Set up Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: notely-460519
+          skip_install: false
 
-        - name: Upload to GCP
-          run: gcloud builds submit --tag us-central1-docker.pkg.dev/notely-460519/notely-ar-repo/jaisonv/notely:latest .
+      # Step 7: Manually authenticate gcloud
+      - name: Authenticate gcloud
+        run: gcloud auth activate-service-account --key-file=$GOOGLE_GHA_CREDS_PATH
+
+      # Step 8: Use gcloud CLI
+      - name: Use gcloud CLI
+        run: gcloud info
+
+      # Step 9: Upload to GCP
+      - name: Upload to GCP
+        run: gcloud builds submit --tag us-central1-docker.pkg.dev/notely-460519/notely-ar-repo/jaisonv/notely:latest .
