@@ -14,6 +14,17 @@ jobs:
             credentials_json: ${{ secrets.GCP_CREDENTIALS }}
             export_credentials: true
 
+        - name: Debug credentials file
+          run: |
+            echo "GOOGLE_GHA_CREDS_PATH=$GOOGLE_GHA_CREDS_PATH"
+            if [ -f "$GOOGLE_GHA_CREDS_PATH" ]; then
+              echo "Credentials file exists at $GOOGLE_GHA_CREDS_PATH"
+              cat "$GOOGLE_GHA_CREDS_PATH"
+            else
+              echo "Credentials file does NOT exist at $GOOGLE_GHA_CREDS_PATH"
+              ls -la /home/runner/work/learn-cicd-starter/learn-cicd-starter/
+            fi
+
         - name: Check out code
           uses: actions/checkout@v4
 
